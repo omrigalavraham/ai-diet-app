@@ -48,6 +48,8 @@ interface UserState {
     nextStep: () => void;
     prevStep: () => void;
     generateWeeklyPlan: (selectedDays: string[]) => Promise<void>;
+    generateRecipeFromIngredients: (ingredients: string) => Promise<Meal | null>;
+    setMealForDay: (day: string, mealType: string, meal: Meal) => void;
     swapMeal: (day: string, mealType: string) => Promise<void>;
     swapIngredient: (day: string, mealType: string, oldIngredient: string, newIngredient: string) => Promise<{ success: boolean; requiresOverride: boolean; warningMessage?: string }>;
     forceSwapIngredient: (day: string, mealType: string, oldIngredient: string, newIngredient: string) => void;
@@ -249,6 +251,78 @@ export const useUserStore = create<UserState>((set, get) => ({
     },
 
     // --- Mutating Functions ---
+
+    generateRecipeFromIngredients: async (ingredients: string) => {
+        const state = get();
+        if (!state.session?.user || !state.profile) return null;
+
+        try {
+            const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+            if (!apiKey) throw new Error('VITE_GEMINI_API_KEY is missing');
+
+            const prompt = `You are an elite AI chef. The user has these ingredients at home:
+"${ingredients}"
+
+Generate a healthy, delicious recipe using PRIMARILY these ingredients. You may add basic pantry staples (salt, pepper, oil, spices) if needed.
+Target roughly ${state.profile.targetDailyCalories ? Math.round(state.profile.targetDailyCalories / 3) : 500} calories for this meal.
+
+IMPORTANT: ALL text MUST be in Hebrew.
+Return a JSON object EXACTLY matching this structure:
+{
+  "name": "שם המנה בעברית",
+  "description": "תיאור קצר בעברית",
+  "calories": int,
+  "macros": { "protein": int, "carbs": int, "fat": int },
+  "ingredients": ["200 גרם חזה עוף", "כוס אורז"],
+  "structuredIngredients": [{"name": "חזה עוף", "amount": "200 גרם"}, {"name": "אורז", "amount": "כוס"}],
+  "prepTimeMinutes": int,
+  "satietyScore": int
+}
+Do not use markdown blocks, just raw JSON.`;
+
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                    generationConfig: { responseMimeType: "application/json" }
+                })
+            });
+
+            if (!response.ok) throw new Error('Network response was not ok');
+
+            const aiData = await response.json();
+            const textOutput = aiData.candidates[0].content.parts[0].text;
+            const meal = JSON.parse(textOutput) as Meal;
+            meal.id = `home-recipe-${Date.now()}`;
+            return meal;
+        } catch (err) {
+            console.error('Error generating recipe from ingredients:', err);
+            return null;
+        }
+    },
+
+    setMealForDay: (day: string, mealType: string, meal: Meal) => {
+        set((state) => {
+            const currentPlan = state.weeklyPlan || {};
+            return {
+                weeklyPlan: {
+                    ...currentPlan,
+                    [day]: {
+                        ...(currentPlan[day] || {}),
+                        [mealType]: meal
+                    }
+                }
+            };
+        });
+
+        // Persist to DB
+        const updatedState = get();
+        const userId = updatedState.session?.user?.id;
+        if (userId && updatedState.weeklyPlan) {
+            persistWeeklyPlan(userId, updatedState.weeklyPlan);
+        }
+    },
 
     generateWeeklyPlan: async (selectedDays: string[]) => {
         const state = get();

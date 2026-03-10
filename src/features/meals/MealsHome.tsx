@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import MealCard from './MealCard';
 import DaySelectionModal from './DaySelectionModal';
 import SmartGroceryListModal from './SmartGroceryListModal';
+import CookFromHomeModal from './CookFromHomeModal';
 import { useUserStore } from '../../store/userStore';
 
 const dayNamesHebrew: Record<string, string> = {
@@ -29,6 +30,7 @@ const MealsHome: React.FC = () => {
     const [isGenerating, setIsGenerating] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [showGroceryList, setShowGroceryList] = useState(false);
+    const [showCookFromHome, setShowCookFromHome] = useState(false);
 
     // Default selected tab based on current day if available in plan
     const todayKey = jsDayToKey[new Date().getDay()];
@@ -65,7 +67,22 @@ const MealsHome: React.FC = () => {
                 >
                     בוא נתכנן את הארוחות
                 </button>
+                <button
+                    className="btn-secondary px-6 py-3 text-base mt-3 border-amber-500/30 text-amber-400 hover:bg-amber-500/10 hover:border-amber-500/50"
+                    onClick={() => setShowCookFromHome(true)}
+                >
+                    🏠 יש לי בבית — תכין לי מתכון
+                </button>
                 {showModal && <DaySelectionModal onClose={() => setShowModal(false)} onGenerate={handleGenerate} />}
+                {showCookFromHome && (
+                    <CookFromHomeModal
+                        currentDay={todayKey}
+                        dayHebrew={dayNamesHebrew[todayKey] || ''}
+                        existingMealTypes={[]}
+                        onClose={() => setShowCookFromHome(false)}
+                        onMealSet={() => setSelectedTab(todayKey)}
+                    />
+                )}
             </div>
         );
     }
@@ -89,6 +106,13 @@ const MealsHome: React.FC = () => {
                         title="הפק רשימת קניות"
                     >
                         🛒 רשימת קניות
+                    </button>
+                    <button
+                        className="btn-secondary text-sm border-amber-500/30 text-amber-400 hover:bg-amber-500/10 hover:border-amber-500/50"
+                        onClick={() => setShowCookFromHome(true)}
+                        title="צור מתכון ממה שיש בבית"
+                    >
+                        🏠 יש לי בבית
                     </button>
                     {isToday && (!weeklyPlan[todayKey]?.sosSnack) && (
                         <button
@@ -177,6 +201,23 @@ const MealsHome: React.FC = () => {
                 <SmartGroceryListModal
                     weeklyPlan={weeklyPlan}
                     onClose={() => setShowGroceryList(false)}
+                />
+            )}
+
+            {showCookFromHome && (
+                <CookFromHomeModal
+                    currentDay={selectedTab || todayKey}
+                    dayHebrew={dayNamesHebrew[selectedTab || todayKey] || ''}
+                    existingMealTypes={
+                        weeklyPlan && weeklyPlan[selectedTab || todayKey]
+                            ? Object.keys(weeklyPlan[selectedTab || todayKey])
+                            : []
+                    }
+                    onClose={() => setShowCookFromHome(false)}
+                    onMealSet={() => {
+                        // Refresh the tab to show the new meal
+                        setSelectedTab(selectedTab || todayKey);
+                    }}
                 />
             )}
         </div>
