@@ -1,0 +1,186 @@
+/* Onboarding Flow Styles */
+
+.onboarding-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-lg);
+    background: radial-gradient(circle at top right, var(--color-surface-hover), var(--color-bg));
+}
+
+.onboarding-wrapper {
+    width: 100%;
+    max-width: 480px;
+    background-color: var(--color-surface);
+    border-radius: var(--border-radius-lg);
+    padding: var(--spacing-xl);
+    box-shadow: var(--shadow-lg);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.onboarding-step {
+    display: flex;
+    flex-direction: column;
+    min-height: 400px;
+}
+
+/* Typography styles inside Onboarding */
+.title-gradient {
+    background: linear-gradient(135deg, var(--color-primary), #34d399);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 800;
+    font-size: 2rem;
+    line-height: 1.2;
+}
+
+.text-muted {
+    color: var(--color-text-muted);
+}
+
+.text-success {
+    color: var(--color-success);
+}
+
+.card-glass {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: var(--border-radius-md);
+    padding: var(--spacing-lg);
+}
+
+/* Forms & Inputs */
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.form-group label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text-main);
+}
+
+.input-field {
+    width: 100%;
+    padding: var(--spacing-md);
+    background-color: var(--color-bg);
+    border: 1px solid var(--color-surface-hover);
+    border-radius: var(--border-radius-sm);
+    color: var(--color-text-main);
+    font-size: 1rem;
+    outline: none;
+    transition: border-color var(--transition-fast);
+}
+
+.input-field:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px var(--color-primary-light);
+}
+
+/* Buttons */
+.btn-primary {
+    background-color: var(--color-primary);
+    color: #fff;
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius-md);
+    font-weight: 600;
+    transition: all var(--transition-fast);
+    text-align: center;
+}
+
+.btn-primary:hover {
+    background-color: var(--color-primary-hover);
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background-color: var(--color-surface-hover);
+    color: var(--color-text-main);
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius-md);
+    font-weight: 500;
+    transition: all var(--transition-fast);
+    text-align: center;
+}
+
+.btn-secondary:hover {
+    background-color: var(--color-text-muted);
+    color: var(--color-bg);
+}
+
+/* Chips for preferences */
+.chip {
+    padding: var(--spacing-xs) var(--spacing-md);
+    border-radius: var(--border-radius-full);
+    font-size: 0.875rem;
+    transition: all var(--transition-fast);
+}
+
+.chip-active {
+    background-color: var(--color-primary-light);
+    color: var(--color-primary);
+    border: 1px solid var(--color-primary);
+}
+
+.chip-inactive {
+    background-color: var(--color-surface-hover);
+    color: var(--color-text-muted);
+    border: 1px solid transparent;
+}
+
+.chip-inactive:hover {
+    background-color: var(--color-text-muted);
+    color: var(--color-surface);
+}
+
+/* Animations */
+.fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Progress bar */
+.progress-bar {
+    height: 4px;
+    background-color: var(--color-surface-hover);
+    border-radius: var(--border-radius-full);
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background-color: var(--color-primary);
+    transition: width 0.3s ease;
+}
+
+/* Loader */
+.loader {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(16, 185, 129, 0.2);
+    border-radius: 50%;
+    border-top-color: var(--color-primary);
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
