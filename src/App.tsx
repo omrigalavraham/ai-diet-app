@@ -13,13 +13,30 @@ import { supabase } from './lib/supabase';
 
 // Route wrapper that checks if user is logged in AND onboarding is completed
 const ProtectedRoute = () => {
-  const { profile, session } = useUserStore();
+  const { profile, session, profileLoaded } = useUserStore();
 
   if (!session) {
     return <Navigate to="/auth" replace />;
   }
 
-  // If no target calories are set, we assume onboarding is not finished
+  // Profile fetch failed or timed out - show retry instead of redirecting to onboarding
+  if (!profileLoaded) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-bg fade-in gap-4" dir="rtl">
+        <p className="text-muted">לא הצלחנו לטעון את הפרופיל שלך</p>
+        <button
+          className="btn-primary px-6 py-2"
+          onClick={async () => {
+            await useUserStore.getState().fetchProfile();
+          }}
+        >
+          נסה שוב
+        </button>
+      </div>
+    );
+  }
+
+  // Profile loaded successfully but no target calories = onboarding not finished
   if (!profile?.targetDailyCalories) {
     return <Navigate to="/onboarding" replace />;
   }
@@ -31,51 +48,68 @@ const App: React.FC = () => {
   const [isInitializing, setIsInitializing] = React.useState(true);
 
   React.useEffect(() => {
-    console.log("App mounted, checking session...");
-    // Check active session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      console.log("getSession returned:", session ? "User found" : "No user");
+    console.log("App mounted, initializing...");
+    let isMounted = true;
+    let initialSessionHandled = false;
+
+    const loadUserData = async () => {
       try {
-        setSession(session);
-        if (session) {
-          console.log("Fetching profile for user...");
-          await useUserStore.getState().fetchProfile();
+        await useUserStore.getState().fetchProfile();
+        if (useUserStore.getState().profileLoaded) {
           await Promise.all([
             useUserStore.getState().fetchWeeklyPlan(),
             useUserStore.getState().fetchWeightHistory(),
             useUserStore.getState().fetchWorkoutLogs(),
           ]);
-          console.log("All data fetched successfully");
         }
+        console.log("Data loading complete, profileLoaded:", useUserStore.getState().profileLoaded);
       } catch (err) {
-        console.error("Auth init error:", err);
-      } finally {
-        console.log("Setting isInitializing to false");
-        setIsInitializing(false);
+        console.error("Data fetch error:", err);
       }
-    }).catch((err) => {
-      console.error("getSession error:", err);
-      setIsInitializing(false);
-    });
+    };
 
-    // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("Auth state changed:", event);
+      if (!isMounted) return;
+
+      // Always update session state
       setSession(session);
-      // Only fetch profile on explicit SIGN_IN, not on INITIAL_SESSION which getSession handles
-      if (session && event === 'SIGNED_IN') {
-        await useUserStore.getState().fetchProfile();
-        await Promise.all([
-          useUserStore.getState().fetchWeeklyPlan(),
-          useUserStore.getState().fetchWeightHistory(),
-          useUserStore.getState().fetchWorkoutLogs(),
-        ]);
+
+      if (event === 'INITIAL_SESSION') {
+        // INITIAL_SESSION is guaranteed to fire exactly once with a valid session
+        // This is the ONLY event we trust for first-time initialization
+        initialSessionHandled = true;
+        if (session) {
+          await loadUserData();
+        }
+        if (isMounted) setIsInitializing(false);
+      } else if (event === 'SIGNED_IN') {
+        // SIGNED_IN may fire before INITIAL_SESSION during token recovery
+        // Only handle it if INITIAL_SESSION was already processed (= subsequent login)
+        if (initialSessionHandled) {
+          await loadUserData();
+        }
+        // If INITIAL_SESSION hasn't fired yet, ignore — it will handle loading
+      } else if (event === 'SIGNED_OUT') {
+        if (isMounted) setIsInitializing(false);
       }
     });
 
-    return () => subscription.unsubscribe();
+    // Safety timeout — never let the app hang on loading forever
+    const timeout = setTimeout(() => {
+      if (isMounted) {
+        console.warn("Init timeout reached (12s), forcing load");
+        setIsInitializing(false);
+      }
+    }, 12000);
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, [setSession]);
 
   if (isInitializing) {

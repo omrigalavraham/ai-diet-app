@@ -37,6 +37,7 @@ async function persistWeeklyPlan(userId: string, weeklyPlan: WeeklyPlan) {
 
 interface UserState {
     profile: Partial<UserProfile> | null;
+    profileLoaded: boolean;
     session: any | null;
     onboardingStep: number;
     weeklyPlan: WeeklyPlan | null;
@@ -77,6 +78,7 @@ export const useUserStore = create<UserState>((set, get) => ({
         allergies: [],
         dislikedFoods: []
     },
+    profileLoaded: false,
     session: null,
     onboardingStep: 1,
     weeklyPlan: null,
@@ -88,7 +90,7 @@ export const useUserStore = create<UserState>((set, get) => ({
             profile: { ...state.profile, ...data }
         })),
 
-    setSession: (session) => set({ session }),
+    setSession: (session) => set({ session, ...(session ? {} : { profileLoaded: false }) }),
 
     nextStep: () => set((state) => ({ onboardingStep: state.onboardingStep + 1 })),
 
@@ -103,26 +105,31 @@ export const useUserStore = create<UserState>((set, get) => ({
             return;
         }
 
-        console.log("fetchProfile: Starting fetch for user ID:", state.session.user.id);
+        const userId = state.session.user.id;
+        console.log("fetchProfile: Starting fetch for user ID:", userId);
         try {
             const { data, error } = await supabase
                 .from('profiles')
                 .select('*')
-                .eq('id', state.session.user.id)
+                .eq('id', userId)
                 .single();
 
             if (error) {
                 if (error.code === 'PGRST116') {
                     console.log("fetchProfile: No profile found (PGRST116), user needs onboarding");
+                    // Successfully checked DB - user genuinely has no profile yet
+                    set({ profileLoaded: true });
                 } else {
                     console.error('fetchProfile: Error fetching profile:', error);
+                    // DB error - don't set profileLoaded so we don't redirect to onboarding
                 }
                 return;
             }
 
             if (data) {
-                console.log("fetchProfile: Data found, updating state", data);
+                console.log("fetchProfile: Data found, updating state");
                 set({
+                    profileLoaded: true,
                     profile: {
                         name: data.name || '',
                         gender: data.gender || 'male',
@@ -140,7 +147,8 @@ export const useUserStore = create<UserState>((set, get) => ({
                 });
             }
         } catch (err: any) {
-            console.error('fetchProfile: Unexpected exception:', err);
+            console.error('fetchProfile: Exception:', err?.message || err);
+            // Don't set profileLoaded on error - prevents false redirect to onboarding
         }
     },
 
@@ -223,19 +231,17 @@ export const useUserStore = create<UserState>((set, get) => ({
                 .select('*')
                 .eq('user_id', state.session.user.id)
                 .eq('start_date', getStartOfWeekSunday())
-                .single();
+                .maybeSingle();
 
             if (error) {
-                if (error.code === 'PGRST116') {
-                    console.log('No weekly plan found for this week');
-                } else {
-                    console.error('Failed to fetch weekly plan:', error);
-                }
+                console.error('Failed to fetch weekly plan:', error);
                 return;
             }
 
             if (data?.plan_data) {
                 set({ weeklyPlan: data.plan_data as unknown as WeeklyPlan });
+            } else {
+                set({ weeklyPlan: null }); // Ensure it's clear if no data
             }
         } catch (err) {
             console.error('Unexpected error fetching weekly plan:', err);
@@ -252,7 +258,7 @@ export const useUserStore = create<UserState>((set, get) => ({
             const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
             if (!apiKey) throw new Error('VITE_GEMINI_API_KEY is missing');
 
-            const systemPrompt = `You are an elite AI nutritionist.
+            const systemPrompt = `You are an elite AI nutritionist. ALL output text (meal names, descriptions, ingredients) MUST be in Hebrew.
 Generate a structured JSON weekly diet plan for ${selectedDays.length} days (${selectedDays.join(', ')}).
 User Profile:
 - Calories Goal: ${state.profile.targetDailyCalories}
@@ -260,11 +266,12 @@ User Profile:
 - Allergies: ${state.profile.allergies?.join(', ') || 'None'}
 - Dietary Preferences: ${state.profile.dietaryPreferences?.join(', ') || 'None'}
 
-You MUST return a JSON object with this exact structure (no markdown blocks, pure JSON):
+You MUST return a JSON object with this exact structure (no markdown blocks, pure JSON).
+IMPORTANT: All values for "name", "description", and "ingredients" must be written in Hebrew.
 {
   "plannedMeals": {
     "dayName (e.g., tuesday)": {
-      "breakfast": { "id": "uuid", "name": "Meal Name", "description": "Short desc", "calories": int, "macros": { "protein": int, "carbs": int, "fat": int }, "ingredients": ["ing1", "ing2"], "prepTimeMinutes": int, "satietyScore": int (1-10) },
+      "breakfast": { "id": "uuid", "name": "שם המנה בעברית", "description": "תיאור קצר בעברית", "calories": int, "macros": { "protein": int, "carbs": int, "fat": int }, "ingredients": ["רכיב1", "רכיב2"], "prepTimeMinutes": int, "satietyScore": int (1-10) },
       "lunch": { ... },
       "dinner": { ... },
       "snack": { ... }
@@ -273,7 +280,7 @@ You MUST return a JSON object with this exact structure (no markdown blocks, pur
 }
 It is critical that you respect the calorie budget for EACH DAY.`;
 
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${apiKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -318,7 +325,8 @@ It is critical that you respect the calorie budget for EACH DAY.`;
             const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
             if (!apiKey) throw new Error('VITE_GEMINI_API_KEY is missing');
 
-            const systemPrompt = `You are an elite AI nutritionist. The user wants to swap their planned ${mealType}.
+            const systemPrompt = `You are an elite AI nutritionist. ALL output text (meal names, descriptions, ingredients) MUST be in Hebrew.
+The user wants to swap their planned ${mealType}.
 
 Current Meal: ${JSON.stringify(existingMeal)}
 
@@ -330,13 +338,14 @@ User Constraints:
 - Dislikes: ${state.profile.dislikedFoods?.join(', ') || 'None'}
 
 Generate a REPLACEMENT meal that fits the same macro/calorie profile roughly (+/- 50 calories).
+IMPORTANT: All values for "name", "description", and "ingredients" must be written in Hebrew.
 Return a JSON object EXACTLY matching this structure:
 {
-  "id": "uuid", "name": "Meal Name", "description": "Short desc", "calories": int, "macros": { "protein": int, "carbs": int, "fat": int }, "ingredients": ["ing1", "ing2"], "prepTimeMinutes": int, "satietyScore": int (1-10)
+  "id": "uuid", "name": "שם המנה בעברית", "description": "תיאור קצר בעברית", "calories": int, "macros": { "protein": int, "carbs": int, "fat": int }, "ingredients": ["רכיב1", "רכיב2"], "prepTimeMinutes": int, "satietyScore": int (1-10)
 }
 Do not use markdown blocks, just raw JSON.`;
 
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${apiKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -389,22 +398,23 @@ Do not use markdown blocks, just raw JSON.`;
             const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
             if (!apiKey) throw new Error('VITE_GEMINI_API_KEY is missing');
 
-            const systemPrompt = `You are an elite AI nutritionist validating an ingredient swap for a user's meal.
+            const systemPrompt = `You are an elite AI nutritionist validating an ingredient swap for a user's meal. ALL output text MUST be in Hebrew.
 Meal: ${JSON.stringify(existingMeal)}
 User Profile: Calories Goal ${state.profile.targetDailyCalories}, Macros ${JSON.stringify(state.profile.targetMacros)}
 Requested Swap: Replace "${oldIngredient}" with "${newIngredient}".
 
 Analyze the nutritional impact.
+IMPORTANT: All text values ("warningMessage", "name", "description", "ingredients") must be written in Hebrew.
 Return a JSON object EXACTLY matching this structure:
 {
   "success": boolean,
   "requiresOverride": boolean,
-  "warningMessage": "string containing warning if calories spike > 150 or ruins macros, otherwise null",
-  "updatedMeal": { "id": "...", "name": "...", "description": "...", "calories": int, "macros": { "protein": int, "carbs": int, "fat": int }, "ingredients": ["ing1", "ing2"], "prepTimeMinutes": int, "satietyScore": int }
+  "warningMessage": "הודעת אזהרה בעברית אם הקלוריות עולות ב-150+ או פוגעות במאקרו, אחרת null",
+  "updatedMeal": { "id": "...", "name": "שם בעברית", "description": "תיאור בעברית", "calories": int, "macros": { "protein": int, "carbs": int, "fat": int }, "ingredients": ["רכיב1", "רכיב2"], "prepTimeMinutes": int, "satietyScore": int }
 }
 If 'requiresOverride' is true, do NOT change success to true. If the swap is perfectly fine, success=true and requiresOverride=false.`;
 
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${apiKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

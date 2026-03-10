@@ -29,14 +29,68 @@ const SmartGroceryListModal: React.FC<SmartGroceryListModalProps> = ({ weeklyPla
             });
         });
 
-        // Basic classification (Mock AI categorization)
+        // Comprehensive classification (supports both Hebrew and English ingredient names)
         allIngredients.forEach(ing => {
             const lower = ing.toLowerCase();
-            if (lower.includes('עוף') || lower.includes('דג') || lower.includes('בקר') || lower.includes('טופו') || lower.includes('ביצ') || lower.includes('חלבון') || lower.includes('גבינ')) {
+            if (
+                // Hebrew protein keywords
+                lower.includes('עוף') || lower.includes('דג') || lower.includes('בקר') ||
+                lower.includes('טופו') || lower.includes('ביצ') || lower.includes('חלבון') ||
+                lower.includes('גבינ') || lower.includes('טונה') || lower.includes('סלמון') ||
+                lower.includes('הודו') || lower.includes('שניצל') || lower.includes('קוטג') ||
+                lower.includes('לבנה') || lower.includes('יוגורט') || lower.includes('חזה') ||
+                lower.includes('כבד') || lower.includes('נקניק') || lower.includes('שוק') ||
+                lower.includes('סרדין') || lower.includes('אדממה') || lower.includes('טחינה') ||
+                // English protein keywords
+                lower.includes('chicken') || lower.includes('beef') || lower.includes('fish') ||
+                lower.includes('egg') || lower.includes('tofu') || lower.includes('protein') ||
+                lower.includes('cheese') || lower.includes('tuna') || lower.includes('salmon') ||
+                lower.includes('turkey') || lower.includes('yogurt') || lower.includes('cottage') ||
+                lower.includes('meat') || lower.includes('shrimp') || lower.includes('steak') ||
+                lower.includes('breast') || lower.includes('thigh') || lower.includes('sardine')
+            ) {
                 categories['חלבונים'].push(ing);
-            } else if (lower.includes('אורז') || lower.includes('פחמימה') || lower.includes('פסטה') || lower.includes('לחם') || lower.includes('תפוח אדמה') || lower.includes('שיבולת')) {
+            } else if (
+                // Hebrew carb keywords
+                lower.includes('אורז') || lower.includes('פחמימה') || lower.includes('פסטה') ||
+                lower.includes('לחם') || lower.includes('תפוח אדמה') || lower.includes('שיבולת') ||
+                lower.includes('קינואה') || lower.includes('בטטה') || lower.includes('קוסקוס') ||
+                lower.includes('בורגול') || lower.includes('פיתה') || lower.includes('טורטיה') ||
+                lower.includes('קמח') || lower.includes('גרנולה') || lower.includes('דגנ') ||
+                lower.includes('חומוס') || lower.includes('עדש') || lower.includes('שעועי') ||
+                // English carb keywords
+                lower.includes('rice') || lower.includes('pasta') || lower.includes('bread') ||
+                lower.includes('potato') || lower.includes('oat') || lower.includes('quinoa') ||
+                lower.includes('sweet potato') || lower.includes('couscous') || lower.includes('bulgur') ||
+                lower.includes('tortilla') || lower.includes('pita') || lower.includes('flour') ||
+                lower.includes('granola') || lower.includes('cereal') || lower.includes('noodle') ||
+                lower.includes('hummus') || lower.includes('lentil') || lower.includes('bean')
+            ) {
                 categories['פחמימות'].push(ing);
-            } else if (lower.includes('ירק') || lower.includes('עגבני') || lower.includes('מלפפון') || lower.includes('חס') || lower.includes('תפוח') || lower.includes('בננה') || lower.includes('תרד') || lower.includes('פלפל') || lower.includes('בצל')) {
+            } else if (
+                // Hebrew veggie/fruit keywords
+                lower.includes('ירק') || lower.includes('עגבני') || lower.includes('מלפפון') ||
+                lower.includes('חס') || lower.includes('תפוח') || lower.includes('בננה') ||
+                lower.includes('תרד') || lower.includes('פלפל') || lower.includes('בצל') ||
+                lower.includes('גזר') || lower.includes('ברוקולי') || lower.includes('כרוב') ||
+                lower.includes('אספרגוס') || lower.includes('אבוקד') || lower.includes('לימון') ||
+                lower.includes('תות') || lower.includes('ענב') || lower.includes('אפרסק') ||
+                lower.includes('קישוא') || lower.includes('חציל') || lower.includes('כוסבר') ||
+                lower.includes('פטרוזיל') || lower.includes('שום') || lower.includes('נענע') ||
+                lower.includes('רוקט') || lower.includes('שומר') || lower.includes('סלרי') ||
+                lower.includes('תפוז') || lower.includes('אשכולי') || lower.includes('מנגו') ||
+                // English veggie/fruit keywords
+                lower.includes('tomato') || lower.includes('cucumber') || lower.includes('lettuce') ||
+                lower.includes('apple') || lower.includes('banana') || lower.includes('spinach') ||
+                lower.includes('pepper') || lower.includes('onion') || lower.includes('carrot') ||
+                lower.includes('broccoli') || lower.includes('cabbage') || lower.includes('asparagus') ||
+                lower.includes('avocado') || lower.includes('lemon') || lower.includes('strawberr') ||
+                lower.includes('grape') || lower.includes('peach') || lower.includes('zucchini') ||
+                lower.includes('eggplant') || lower.includes('garlic') || lower.includes('celery') ||
+                lower.includes('orange') || lower.includes('mango') || lower.includes('mushroom') ||
+                lower.includes('corn') || lower.includes('pea') || lower.includes('parsley') ||
+                lower.includes('cilantro') || lower.includes('mint') || lower.includes('basil')
+            ) {
                 categories['ירקות ופירות'].push(ing);
             } else {
                 categories['שונות'].push(ing);

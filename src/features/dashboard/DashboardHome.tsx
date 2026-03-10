@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useUserStore } from '../../store/userStore';
 import WorkoutLogModal from './WorkoutLogModal';
 import DailyWeighInModal from './DailyWeighInModal';
 
 const DashboardHome: React.FC = () => {
-    const { profile, weeklyPlan, generateSOSSnack, dailyWorkouts, logWorkout, weightHistory, logWeight } = useUserStore();
-    const navigate = useNavigate();
+    const { profile, weeklyPlan, dailyWorkouts, logWorkout, weightHistory, logWeight } = useUserStore();
     const [showWorkoutModal, setShowWorkoutModal] = useState(false);
     const [showWeighInModal, setShowWeighInModal] = useState(false);
 
@@ -39,19 +38,6 @@ const DashboardHome: React.FC = () => {
                     <h1 className="title-gradient text-3xl mb-2">שלום, {profile?.name || 'אלוף'}! 🚀</h1>
                     <p className="text-muted">איזה כיף לראות אותך. זה הלו"ז והיעדים שלך להיום.</p>
                 </div>
-
-                {weeklyPlan && weeklyPlan[todayKey] && !weeklyPlan[todayKey].sosSnack && (
-                    <button
-                        onClick={() => {
-                            generateSOSSnack(todayKey);
-                            navigate('/meals');
-                        }}
-                        className="btn-secondary text-red-400 hover:text-red-300 border-red-500/30 hover:bg-red-500/10 hover:border-red-500/50 flex items-center gap-2 self-start md:self-auto py-2"
-                        title="רעב? לחץ למערכת ההצלה"
-                    >
-                        <span className="text-xl">🆘</span> נשנוש חירום
-                    </button>
-                )}
             </header>
 
             {/* Main Stats Grid */}
