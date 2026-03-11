@@ -11,6 +11,8 @@ const dayNamesHebrew: Record<string, string> = {
     tuesday: 'שלישי',
     wednesday: 'רביעי',
     thursday: 'חמישי',
+    friday: 'שישי',
+    saturday: 'שבת',
 };
 
 // Map JS getDay() (0=Sun) to our string keys
@@ -19,7 +21,9 @@ const jsDayToKey: Record<number, string> = {
     1: 'monday',
     2: 'tuesday',
     3: 'wednesday',
-    4: 'thursday'
+    4: 'thursday',
+    5: 'friday',
+    6: 'saturday'
 };
 
 const DaySelectionModal: React.FC<DaySelectionModalProps> = ({ onClose, onGenerate }) => {
@@ -29,18 +33,18 @@ const DaySelectionModal: React.FC<DaySelectionModalProps> = ({ onClose, onGenera
         const currentDayNum = today.getDay(); // 0 is Sunday, 4 is Thursday
         const currentHour = today.getHours();
 
-        // If it's Friday (5) or Saturday (6), we just offer the whole next week (Sun-Thu)
+        // If it's past the last day of the week, offer the whole next week
         let startDayIndex = currentDayNum;
-        if (currentDayNum > 4) {
+        if (currentDayNum > 6) {
             startDayIndex = 0;
         }
 
         const daysLeft: string[] = [];
-        for (let i = startDayIndex; i <= 4; i++) {
+        for (let i = startDayIndex; i <= 6; i++) {
             daysLeft.push(jsDayToKey[i]);
         }
 
-        const lateFlag = currentHour >= 16 && currentDayNum <= 4;
+        const lateFlag = currentHour >= 16;
         return { daysLeft, lateFlag };
     };
 
@@ -102,7 +106,7 @@ const DaySelectionModal: React.FC<DaySelectionModalProps> = ({ onClose, onGenera
                                 </span>
 
                                 {/* Indicate if it's "Today" */}
-                                {day === jsDayToKey[new Date().getDay()] && new Date().getDay() <= 4 && (
+                                {day === jsDayToKey[new Date().getDay()] && (
                                     <span className="mr-auto text-xs bg-surface px-2 py-1 rounded text-muted">היום</span>
                                 )}
                             </label>
@@ -111,7 +115,7 @@ const DaySelectionModal: React.FC<DaySelectionModalProps> = ({ onClose, onGenera
 
                     {availableDays.length === 0 && (
                         <div className="text-center p-6 text-muted border border-surface-hover border-dashed rounded-xl">
-                            סוף השבוע הגיע! אין ימים לתכנן כרגע. אפשר להתחיל לתכנן את שבוע הבא במוצאי שבת.
+                         אין ימים נוספים לתכנן השבוע. אפשר להתחיל לתכנן את השבוע הבא.
                         </div>
                     )}
                 </div>

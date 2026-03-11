@@ -33,6 +33,15 @@ async function persistWeeklyPlan(userId: string, weeklyPlan: WeeklyPlan) {
     }
 }
 
+// Normalize day keys to lowercase (AI sometimes returns 'Wednesday' instead of 'wednesday')
+function normalizeWeeklyPlanKeys(plan: Record<string, any>): Record<string, any> {
+    const normalized: Record<string, any> = {};
+    for (const key of Object.keys(plan)) {
+        normalized[key.toLowerCase()] = plan[key];
+    }
+    return normalized;
+}
+
 // --- Store Interface ---
 
 interface UserState {
@@ -53,7 +62,7 @@ interface UserState {
     swapMeal: (day: string, mealType: string) => Promise<void>;
     swapIngredient: (day: string, mealType: string, oldIngredient: string, newIngredient: string) => Promise<{ success: boolean; requiresOverride: boolean; warningMessage?: string }>;
     forceSwapIngredient: (day: string, mealType: string, oldIngredient: string, newIngredient: string) => void;
-    duplicateMeal: (day: string, mealType: string) => void;
+    duplicateMeal: (day: string, mealType: string) => boolean;
     generateSOSSnack: (day: string) => void;
     applyCheatMealTolerance: (day: string, mealType: string, estimatedCalories: number) => void;
     logWorkout: (day: string, burnedCalories: number, durationMinutes?: number) => void;
@@ -241,7 +250,7 @@ export const useUserStore = create<UserState>((set, get) => ({
             }
 
             if (data?.plan_data) {
-                set({ weeklyPlan: data.plan_data as unknown as WeeklyPlan });
+                set({ weeklyPlan: normalizeWeeklyPlanKeys(data.plan_data as Record<string, any>) as unknown as WeeklyPlan });
             } else {
                 set({ weeklyPlan: null }); // Ensure it's clear if no data
             }
@@ -276,7 +285,8 @@ Return a JSON object EXACTLY matching this structure:
   "ingredients": ["200 גרם חזה עוף", "כוס אורז"],
   "structuredIngredients": [{"name": "חזה עוף", "amount": "200 גרם"}, {"name": "אורז", "amount": "כוס"}],
   "prepTimeMinutes": int,
-  "satietyScore": int
+  "satietyScore": int,
+  "instructions": ["שלב 1: תיאור מפורט...", "שלב 2: תיאור מפורט..."]
 }
 Do not use markdown blocks, just raw JSON.`;
 
@@ -341,11 +351,11 @@ User Profile:
 - Dietary Preferences: ${state.profile.dietaryPreferences?.join(', ') || 'None'}
 
 You MUST return a JSON object with this exact structure (no markdown blocks, pure JSON).
-IMPORTANT: All values for "name", "description", and "ingredients" must be written in Hebrew.
+IMPORTANT: All values for "name", "description", "ingredients", and "instructions" must be written in Hebrew.
 {
   "plannedMeals": {
     "dayName (e.g., tuesday)": {
-      "breakfast": { "id": "uuid", "name": "שם המנה בעברית", "description": "תיאור קצר בעברית", "calories": int, "macros": { "protein": int, "carbs": int, "fat": int }, "ingredients": ["רכיב1", "רכיב2"], "prepTimeMinutes": int, "satietyScore": int (1-10) },
+      "breakfast": { "id": "uuid", "name": "שם המנה בעברית", "description": "תיאור קצר בעברית", "calories": int, "macros": { "protein": int, "carbs": int, "fat": int }, "ingredients": ["רכיב1", "רכיב2"], "prepTimeMinutes": int, "satietyScore": int (1-10), "instructions": ["שלב 1: הוראה...", "שלב 2: הוראה..."] },
       "lunch": { ... },
       "dinner": { ... },
       "snack": { ... }
@@ -372,7 +382,7 @@ It is critical that you respect the calorie budget for EACH DAY.`;
             if (data?.plannedMeals) {
                 const merged = {
                     ...(state.weeklyPlan || {}),
-                    ...data.plannedMeals
+                    ...normalizeWeeklyPlanKeys(data.plannedMeals)
                 };
                 set({ weeklyPlan: merged });
 
@@ -415,7 +425,7 @@ Generate a REPLACEMENT meal that fits the same macro/calorie profile roughly (+/
 IMPORTANT: All values for "name", "description", and "ingredients" must be written in Hebrew.
 Return a JSON object EXACTLY matching this structure:
 {
-  "id": "uuid", "name": "שם המנה בעברית", "description": "תיאור קצר בעברית", "calories": int, "macros": { "protein": int, "carbs": int, "fat": int }, "ingredients": ["רכיב1", "רכיב2"], "prepTimeMinutes": int, "satietyScore": int (1-10)
+  "id": "uuid", "name": "שם המנה בעברית", "description": "תיאור קצר בעברית", "calories": int, "macros": { "protein": int, "carbs": int, "fat": int }, "ingredients": ["רכיב1", "רכיב2"], "prepTimeMinutes": int, "satietyScore": int (1-10), "instructions": ["שלב 1: הוראה...", "שלב 2: הוראה..."]
 }
 Do not use markdown blocks, just raw JSON.`;
 
@@ -571,23 +581,26 @@ If 'requiresOverride' is true, do NOT change success to true. If the swap is per
         }
     },
 
-    duplicateMeal: (day: string, mealType: string) => {
+    duplicateMeal: (day: string, mealType: string): boolean => {
         const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
         const currentIndex = days.indexOf(day);
-        if (currentIndex === -1) return;
+        if (currentIndex === -1) return false;
 
         const nextDay = days[(currentIndex + 1) % 7];
 
+        let success = false;
         set((state) => {
-            if (!state.weeklyPlan || !state.weeklyPlan[day] || !state.weeklyPlan[nextDay]) return state;
+            if (!state.weeklyPlan || !state.weeklyPlan[day]) return state;
 
             const existingMeal = state.weeklyPlan[day][mealType];
+            if (!existingMeal) return state;
 
+            success = true;
             return {
                 weeklyPlan: {
                     ...state.weeklyPlan,
                     [nextDay]: {
-                        ...state.weeklyPlan[nextDay],
+                        ...(state.weeklyPlan[nextDay] || {}),
                         [mealType]: {
                             ...existingMeal,
                             id: `${nextDay}-${mealType}-duplicated`,
@@ -604,6 +617,7 @@ If 'requiresOverride' is true, do NOT change success to true. If the swap is per
         if (userId && state.weeklyPlan) {
             persistWeeklyPlan(userId, state.weeklyPlan);
         }
+        return success;
     },
 
     generateSOSSnack: (day: string) => {

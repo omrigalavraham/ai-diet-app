@@ -31,6 +31,7 @@ export interface Meal {
     };
     prepTimeMinutes: number;
     satietyScore?: number; // 1 to 10
+    instructions?: string[]; // Step-by-step preparation instructions from AI
 }
 
 export interface DailyPlan {

@@ -8,13 +8,16 @@ interface DailyWeighInModalProps {
 }
 
 const DailyWeighInModal: React.FC<DailyWeighInModalProps> = ({ currentWeight, onClose, onSubmit }) => {
-    const [weight, setWeight] = useState<number>(currentWeight);
+    const [weight, setWeight] = useState<string>(String(currentWeight));
     const [mood, setMood] = useState<WeightLog['mood']>('good');
     const [notes, setNotes] = useState('');
 
+    const numericWeight = parseFloat(weight) || 0;
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSubmit(weight, mood, notes);
+        if (numericWeight < 30 || numericWeight > 250) return;
+        onSubmit(numericWeight, mood, notes);
         onClose();
     };
 
@@ -53,7 +56,7 @@ const DailyWeighInModal: React.FC<DailyWeighInModalProps> = ({ currentWeight, on
                             max={250}
                             step={0.1}
                             value={weight}
-                            onChange={(e) => setWeight(Number(e.target.value))}
+                            onChange={(e) => setWeight(e.target.value)}
                             className="input-field text-3xl font-black text-center text-purple-400 py-4"
                             autoFocus
                         />
@@ -92,7 +95,7 @@ const DailyWeighInModal: React.FC<DailyWeighInModalProps> = ({ currentWeight, on
                         <button type="button" onClick={onClose} className="btn-secondary flex-1 py-3 text-sm">
                             סגור
                         </button>
-                        <button type="submit" className="btn-primary flex-1 py-3 text-sm border-none font-bold" style={{ background: 'linear-gradient(to right, #a855f7, #6b21a8)' }}>
+                        <button type="submit" disabled={numericWeight < 30 || numericWeight > 250} className="btn-primary flex-1 py-3 text-sm border-none font-bold disabled:opacity-40 disabled:cursor-not-allowed" style={{ background: 'linear-gradient(to right, #a855f7, #6b21a8)' }}>
                             עדכן נתונים
                         </button>
                     </div>

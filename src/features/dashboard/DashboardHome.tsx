@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useUserStore } from '../../store/userStore';
+import { useTodayKey } from '../../hooks/useTodayKey';
 import WorkoutLogModal from './WorkoutLogModal';
 import DailyWeighInModal from './DailyWeighInModal';
 
@@ -9,8 +10,7 @@ const DashboardHome: React.FC = () => {
     const [showWorkoutModal, setShowWorkoutModal] = useState(false);
     const [showWeighInModal, setShowWeighInModal] = useState(false);
 
-    const jsDayToKey: Record<number, string> = { 0: 'sunday', 1: 'monday', 2: 'tuesday', 3: 'wednesday', 4: 'thursday', 5: 'friday', 6: 'saturday' };
-    const todayKey = jsDayToKey[new Date().getDay()];
+    const { todayKey, todayDate: todaysDateString } = useTodayKey();
 
     // If there's no data yet (e.g. testing directly on '/'), show a fallback
     if (!profile?.targetDailyCalories) {
@@ -28,7 +28,7 @@ const DashboardHome: React.FC = () => {
     const adjustedDailyCalories = (profile?.targetDailyCalories || 0) + burnedCalories;
 
     // Check if user weighed in today
-    const todaysDateString = new Date().toISOString().split('T')[0];
+    // todaysDateString is now provided reactively by useTodayKey()
     const todaysWeighIn = weightHistory.find(w => w.date === todaysDateString);
 
     return (

@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useUserStore } from '../../store/userStore';
+import { useTodayKey } from '../../hooks/useTodayKey';
 
 const WorkoutsHome: React.FC = () => {
     const { dailyWorkouts, logWorkout } = useUserStore();
 
-    const jsDayToKey: Record<number, string> = { 0: 'sunday', 1: 'monday', 2: 'tuesday', 3: 'wednesday', 4: 'thursday', 5: 'friday', 6: 'saturday' };
-    const todayKey = jsDayToKey[new Date().getDay()];
+    const { todayKey } = useTodayKey();
 
     const todaysWorkout = dailyWorkouts[todayKey];
     const [calories, setCalories] = useState<number | ''>(75);

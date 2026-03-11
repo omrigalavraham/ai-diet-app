@@ -8,14 +8,17 @@ interface RecipeModalProps {
 }
 
 const RecipeModal: React.FC<RecipeModalProps> = ({ mealData, onClose }) => {
-    // Generate some mock instructions since they aren't in the Meal type right now
-    const mockInstructions = [
-        `חתוך את המרכיבים העיקריים (${mealData.ingredients.slice(0, 2).join(', ')}) לחתיכות שוות.`,
-        'חמם מחבת על אש בינונית עם כפית שמן זית.',
-        'הוסף את המרכיבים למחבת וטגן עד להזהבה קלה.',
-        'תבל במלח, פלפל, הוסף את שאר המרכיבים ובשל עוד כ-5 דקות.',
-        'הגש חם ובתאבון!'
-    ];
+    // Use real instructions from AI if available, otherwise fallback for old data
+    const hasRealInstructions = mealData.instructions && mealData.instructions.length > 0;
+    const instructions = hasRealInstructions
+        ? mealData.instructions!
+        : [
+            `חתוך את המרכיבים העיקריים (${mealData.ingredients.slice(0, 2).join(', ')}) לחתיכות שוות.`,
+            'חמם מחבת על אש בינונית עם כפית שמן זית.',
+            'הוסף את המרכיבים למחבת וטגן עד להזהבה קלה.',
+            'תבל במלח, פלפל, הוסף את שאר המרכיבים ובשל עוד כ-5 דקות.',
+            'הגש חם ובתאבון!'
+        ];
 
     const modalContent = (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-bg/80 backdrop-blur-sm fade-in">
@@ -78,7 +81,7 @@ const RecipeModal: React.FC<RecipeModalProps> = ({ mealData, onClose }) => {
                             <span>🍳</span> הוראות הכנה ({mealData.prepTimeMinutes} דק')
                         </h4>
                         <div className="space-y-4 relative before:absolute before:inset-y-0 before:right-3.5 before:w-px before:bg-surface-hover">
-                            {mockInstructions.map((step, idx) => (
+                            {instructions.map((step, idx) => (
                                 <div key={idx} className="flex gap-4 relative">
                                     <div className="w-7 h-7 rounded-full bg-surface border border-surface-hover flex items-center justify-center text-xs font-bold text-emerald-400 shrink-0 z-10">
                                         {idx + 1}
@@ -87,9 +90,11 @@ const RecipeModal: React.FC<RecipeModalProps> = ({ mealData, onClose }) => {
                                 </div>
                             ))}
                         </div>
-                        <p className="text-xs text-muted mt-6 text-center italic">
-                            * בשלב הבא (פיתוח צד שרת) ה-AI יספק הוראות ורשימת מצרכים מדויקות וספציפיות עבור כל מנה שנוצרת.
-                        </p>
+                        {!hasRealInstructions && (
+                            <p className="text-xs text-muted mt-6 text-center italic">
+                                * הוראות כלליות. מנות חדשות שתיצרו עם ה-AI יכללו הוראות הכנה מפורטות ומותאמות.
+                            </p>
+                        )}
                     </div>
 
                 </div>

@@ -9,7 +9,7 @@ interface MealCardProps {
     dayKey: string;
     mealType: string;
     mealData: Meal | null;
-    onSwap: (mealType: string) => void;
+    onSwap: (mealType: string) => Promise<void>;
 }
 
 const MealCard: React.FC<MealCardProps> = ({ dayKey, mealType, mealData, onSwap }) => {
@@ -20,19 +20,21 @@ const MealCard: React.FC<MealCardProps> = ({ dayKey, mealType, mealData, onSwap 
     const [isDuplicated, setIsDuplicated] = useState(false);
     const { swapIngredient, forceSwapIngredient, duplicateMeal, applyCheatMealTolerance } = useUserStore();
 
-    const handleSwapClick = () => {
+    const handleSwapClick = async () => {
         setIsSwapping(true);
-        // Simulate AI delay for the animation
-        setTimeout(() => {
-            onSwap(mealType);
+        try {
+            await onSwap(mealType);
+        } finally {
             setIsSwapping(false);
-        }, 1200);
+        }
     };
 
     const handleDuplicateClick = () => {
-        duplicateMeal(dayKey, mealType);
-        setIsDuplicated(true);
-        setTimeout(() => setIsDuplicated(false), 2000);
+        const success = duplicateMeal(dayKey, mealType);
+        if (success) {
+            setIsDuplicated(true);
+            setTimeout(() => setIsDuplicated(false), 2000);
+        }
     };
 
     const getMealIcon = (type: string) => {
@@ -92,23 +94,21 @@ const MealCard: React.FC<MealCardProps> = ({ dayKey, mealType, mealData, onSwap 
                     >
                         <span>🍔</span>
                     </button>
-                    {dayKey !== 'thursday' && (
-                        <button
-                            onClick={handleDuplicateClick}
-                            disabled={isDuplicated}
-                            className={`text-xs px-3 py-1.5 rounded-full transition-colors flex items-center gap-1 shrink-0 ${isDuplicated
-                                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                                : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300'
-                                }`}
-                            title="שכפל ארוחה זו לצהריים של מחר"
-                        >
-                            {isDuplicated ? (
-                                <><span>✔️</span> הועתק למחר</>
-                            ) : (
-                                <><span>🥘</span> הכפל למחר</>
-                            )}
-                        </button>
-                    )}
+                    <button
+                        onClick={handleDuplicateClick}
+                        disabled={isDuplicated}
+                        className={`text-xs px-3 py-1.5 rounded-full transition-colors flex items-center gap-1 shrink-0 ${isDuplicated
+                            ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                            : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300'
+                            }`}
+                        title="שכפל ארוחה זו לצהריים של מחר"
+                    >
+                        {isDuplicated ? (
+                            <><span>✔️</span> הועתק למחר</>
+                        ) : (
+                            <><span>🥘</span> הכפל למחר</>
+                        )}
+                    </button>
                     <button
                         onClick={handleSwapClick}
                         className="text-xs bg-surface-hover hover:bg-slate-700 text-muted hover:text-white px-3 py-1.5 rounded-full transition-colors flex items-center gap-1 shrink-0"

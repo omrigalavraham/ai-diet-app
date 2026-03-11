@@ -9,7 +9,7 @@ interface SmartGroceryListModalProps {
 const SmartGroceryListModal: React.FC<SmartGroceryListModalProps> = ({ weeklyPlan, onClose }) => {
     const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
 
-    // Basic logic to group ingredients from the whole week
+    // Smart logic to group and aggregate ingredients from the whole week
     const groupedList = useMemo(() => {
         const categories: Record<string, string[]> = {
             'חלבונים': [],
@@ -18,15 +18,53 @@ const SmartGroceryListModal: React.FC<SmartGroceryListModalProps> = ({ weeklyPla
             'שונות': []
         };
 
-        const allIngredients = new Set<string>();
+        // Parse ingredient into { amount, unit, name }
+        const parseIngredient = (ing: string) => {
+            const match = ing.match(/^([\d.,/½¼¾⅓⅔]+)\s*(גרם|גר׳|מ"ל|כוס|כוסות|כף|כפות|יח׳|יחידות|קילו|ליטר)?\s*(.+)/);
+            if (match) {
+                const amount = parseFloat(match[1].replace(',', '.')) || 0;
+                const unit = match[2] || '';
+                const name = match[3].trim().toLowerCase();
+                return { amount, unit, name, displayName: match[3].trim() };
+            }
+            return { amount: 0, unit: '', name: ing.trim().toLowerCase(), displayName: ing.trim() };
+        };
 
-        // Extract all unique ingredients
+        // Aggregate quantities by name+unit
+        const aggregated = new Map<string, { total: number; unit: string; displayName: string }>();
+
         Object.values(weeklyPlan).forEach(dayObj => {
             Object.values(dayObj).forEach(meal => {
                 if (meal && meal.ingredients) {
-                    meal.ingredients.forEach(ing => allIngredients.add(ing));
+                    meal.ingredients.forEach(ing => {
+                        const parsed = parseIngredient(ing);
+                        const key = `${parsed.name}|${parsed.unit}`;
+
+                        if (aggregated.has(key)) {
+                            const existing = aggregated.get(key)!;
+                            existing.total += parsed.amount;
+                        } else {
+                            aggregated.set(key, {
+                                total: parsed.amount,
+                                unit: parsed.unit,
+                                displayName: parsed.displayName
+                            });
+                        }
+                    });
                 }
             });
+        });
+
+        // Build final ingredient strings
+        const allIngredients: string[] = [];
+        aggregated.forEach(({ total, unit, displayName }) => {
+            if (total > 0 && unit) {
+                // Format: "500 גרם חזה עוף"
+                const formattedAmount = total % 1 === 0 ? total.toString() : total.toFixed(1);
+                allIngredients.push(`${formattedAmount} ${unit} ${displayName}`);
+            } else {
+                allIngredients.push(displayName);
+            }
         });
 
         // Comprehensive classification (supports both Hebrew and English ingredient names)

@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import MealCard from './MealCard';
 import DaySelectionModal from './DaySelectionModal';
 import SmartGroceryListModal from './SmartGroceryListModal';
 import CookFromHomeModal from './CookFromHomeModal';
 import { useUserStore } from '../../store/userStore';
+import { useTodayKey } from '../../hooks/useTodayKey';
 
 const dayNamesHebrew: Record<string, string> = {
     sunday: 'ראשון',
@@ -15,29 +16,30 @@ const dayNamesHebrew: Record<string, string> = {
     saturday: 'שבת',
 };
 
-const jsDayToKey: Record<number, string> = {
-    0: 'sunday',
-    1: 'monday',
-    2: 'tuesday',
-    3: 'wednesday',
-    4: 'thursday',
-    5: 'friday',
-    6: 'saturday'
-};
-
 const MealsHome: React.FC = () => {
     const { weeklyPlan, generateWeeklyPlan, swapMeal, generateSOSSnack } = useUserStore();
+    const { todayKey } = useTodayKey();
     const [isGenerating, setIsGenerating] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [showGroceryList, setShowGroceryList] = useState(false);
     const [showCookFromHome, setShowCookFromHome] = useState(false);
 
     // Default selected tab based on current day if available in plan
-    const todayKey = jsDayToKey[new Date().getDay()];
-    const [selectedTab, setSelectedTab] = useState<string>(
-        weeklyPlan && weeklyPlan[todayKey] ? todayKey :
-            weeklyPlan ? Object.keys(weeklyPlan)[0] : ''
-    );
+    const [selectedTab, setSelectedTab] = useState<string>(() => {
+        if (weeklyPlan && weeklyPlan[todayKey]) return todayKey;
+        if (weeklyPlan) {
+            const keys = Object.keys(weeklyPlan);
+            return keys.length > 0 ? keys[0] : todayKey;
+        }
+        return todayKey;
+    });
+
+    // Auto-update selectedTab when the day changes (e.g. midnight rollover)
+    useEffect(() => {
+        if (weeklyPlan && weeklyPlan[todayKey]) {
+            setSelectedTab(todayKey);
+        }
+    }, [todayKey, weeklyPlan]);
 
     const handleGenerate = async (selectedDays: string[]) => {
         setShowModal(false);
@@ -47,8 +49,8 @@ const MealsHome: React.FC = () => {
         setIsGenerating(false);
     };
 
-    const handleSwapMeal = (mealType: string) => {
-        swapMeal(selectedTab, mealType);
+    const handleSwapMeal = async (mealType: string): Promise<void> => {
+        await swapMeal(selectedTab, mealType);
     };
 
     if (!weeklyPlan) {
@@ -147,7 +149,7 @@ const MealsHome: React.FC = () => {
                             : 'bg-surface border-surface-hover text-muted hover:border-text-muted hover:text-white'
                             }`}
                     >
-                        יום {dayNamesHebrew[day]}
+                        יום {dayNamesHebrew[day] || dayNamesHebrew[day.toLowerCase()] || day}
                         {day === todayKey && <span className="mr-2 text-xs opacity-70">(היום)</span>}
                     </button>
                 ))}

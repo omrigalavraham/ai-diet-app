@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useUserStore } from '../../store/userStore';
+import { useTodayKey } from '../../hooks/useTodayKey';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import DailyWeighInModal from '../dashboard/DailyWeighInModal';
 
@@ -21,7 +22,7 @@ const ProgressHome: React.FC = () => {
         });
 
     // Check if user weighed in today
-    const todaysDateString = new Date().toISOString().split('T')[0];
+    const { todayDate: todaysDateString } = useTodayKey();
     const todaysWeighIn = weightHistory.find(w => w.date === todaysDateString);
 
     const getMoodWarning = () => {
